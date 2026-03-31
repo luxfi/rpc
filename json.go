@@ -6,12 +6,15 @@ package rpc
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -23,14 +26,20 @@ const (
 	retryBaseWait = 500 * time.Millisecond // Increased from 100ms
 )
 
-// newHTTPClient creates a fresh HTTP client with disabled connection reuse.
-// This avoids EOF errors that can occur with connection pooling in complex
-// process hierarchies (e.g., netrunner spawning luxd processes).
+// newHTTPClient creates an HTTP client for JSON-RPC requests.
+// Uses short per-IP dial timeouts to handle DNS entries with mixed live/dead IPs.
+// TLS verification can be disabled via LUX_INSECURE_TLS=1 for devnet/staging
+// endpoints that use self-signed certificates.
 func newHTTPClient() *http.Client {
+	skipTLS := os.Getenv("LUX_INSECURE_TLS") == "1"
 	return &http.Client{
 		Timeout: 30 * time.Second,
 		Transport: &http.Transport{
-			DisableKeepAlives: true, // Disable connection reuse to avoid EOF issues
+			DialContext:         (&net.Dialer{Timeout: 5 * time.Second}).DialContext,
+			TLSHandshakeTimeout: 10 * time.Second,
+			TLSClientConfig:    &tls.Config{InsecureSkipVerify: skipTLS},
+			DisableKeepAlives:  true,
+			ForceAttemptHTTP2:  true,
 		},
 	}
 }
