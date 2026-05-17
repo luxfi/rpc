@@ -10,38 +10,45 @@ import (
 )
 
 // Dial connects to an RPC server using the default transport (ZAP).
-// Use DialWithOptions for transport selection.
+// Alternative transports (e.g. gRPC) register themselves via build tags;
+// request one with WithTransport. If the requested transport was not
+// compiled in, Dial returns an error pointing at the missing build tag.
 func Dial(ctx context.Context, addr string, opts ...DialOption) (Client, error) {
 	o := &dialOptions{
-		transport: "zap", // ZAP is default
+		transport: DefaultTransport,
 	}
 	for _, opt := range opts {
 		opt(o)
 	}
 
-	switch o.transport {
-	case "zap":
-		return dialZAP(ctx, addr, o)
-	default:
-		return nil, fmt.Errorf("unknown transport: %s", o.transport)
+	transportsMu.RLock()
+	entry, ok := transports[o.transport]
+	transportsMu.RUnlock()
+	if !ok {
+		return nil, fmt.Errorf("rpc: transport %q not available (rebuild with -tags=%s)", o.transport, o.transport)
 	}
+	return entry.dial(ctx, addr, o)
 }
 
 // Listen creates an RPC server listener using the default transport (ZAP).
+// Alternative transports register themselves via build tags; request one
+// with WithServerTransport. If the requested transport was not compiled
+// in, Listen returns an error pointing at the missing build tag.
 func Listen(addr string, opts ...ServerOption) (Server, error) {
 	o := &serverOptions{
-		transport: "zap", // ZAP is default
+		transport: DefaultTransport,
 	}
 	for _, opt := range opts {
 		opt(o)
 	}
 
-	switch o.transport {
-	case "zap":
-		return listenZAP(addr, o)
-	default:
-		return nil, fmt.Errorf("unknown transport: %s", o.transport)
+	transportsMu.RLock()
+	entry, ok := transports[o.transport]
+	transportsMu.RUnlock()
+	if !ok {
+		return nil, fmt.Errorf("rpc: transport %q not available (rebuild with -tags=%s)", o.transport, o.transport)
 	}
+	return entry.listen(addr, o)
 }
 
 // dialZAP creates a ZAP client
