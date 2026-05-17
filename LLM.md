@@ -8,9 +8,24 @@ Go module: github.com/luxfi/rpc
 
 ## Build & Run
 ```bash
-go build ./...
-go test ./...
+go build ./...           # default: ZAP transport only, no gRPC
+go test  ./...
+go build -tags=grpc ./...  # opt in to gRPC transport
+go test  -tags=grpc ./...
 ```
+
+## Transports
+ZAP is the default and only always-on transport. Alternative transports
+are gated behind Go build tags so the default footprint stays minimal:
+
+| Transport | Tag      | File              | Notes                          |
+|-----------|----------|-------------------|--------------------------------|
+| ZAP       | (always) | `zap.go`          | Zero-copy, default for HFT/VM. |
+| gRPC      | `grpc`   | `dial_grpc.go`    | Pulls in `google.golang.org/grpc`. |
+
+Dial/Listen consult an in-process transport registry; tagged files
+register themselves via `init()`. Requesting a transport that was not
+compiled in returns an explicit error pointing at the missing tag.
 
 ## Structure
 ```
