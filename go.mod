@@ -2,18 +2,4 @@ module github.com/luxfi/rpc
 
 go 1.26.3
 
-require (
-	github.com/gorilla/rpc v1.2.1
-	google.golang.org/grpc v1.78.0
-)
-
-require (
-	go.opentelemetry.io/otel v1.39.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.39.0 // indirect
-	golang.org/x/net v0.51.0 // indirect
-	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/text v0.35.0 // indirect
-	gonum.org/v1/gonum v0.17.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260120221211-b8f7ae30c516 // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
-)
+require github.com/gorilla/rpc v1.2.1
