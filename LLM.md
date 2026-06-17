@@ -1,4 +1,4 @@
-# LLM.md - Hanzo Rpc
+# Hanzo Rpc
 
 ## Overview
 Go module: github.com/luxfi/rpc
