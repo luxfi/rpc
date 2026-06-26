@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sync"
 )
 
 // Dial connects to an RPC server using the default transport (ZAP).
@@ -69,11 +70,17 @@ func listenZAP(addr string, o *serverOptions) (Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &zapServer{
+	s := &zapServer{
 		listener: listener,
 		handlers: make(map[string]RawHandler),
 		codec:    o.codec,
-	}, nil
+	}
+	// Build the ZAP server (and its dispatch closure) once, at construction, so
+	// the server field is never mutated after the struct is published. Serve and
+	// Close never race on it, and a Close that wins the startup race still stops
+	// the accept loop (it sets closed) instead of leaking a spinning goroutine.
+	s.server = NewZAPServer(listener, ZAPHandlerFunc(s.dispatch))
+	return s, nil
 }
 
 // zapClient implements Client using ZAP transport
@@ -141,9 +148,16 @@ func (c *zapClient) Close() error {
 	return c.conn.Close()
 }
 
-// zapServer implements Server using ZAP transport
+// zapServer implements Server using ZAP transport.
+//
+// handlers is guarded by mu so RegisterRaw is safe concurrent with Serve: a
+// host that registers methods dynamically (e.g. luxd binding each VM's native
+// ZAP surface as the chain bootstraps, after the accept loop is already
+// running) does not race the dispatch read. The dex venue registers all
+// methods before Serve, but that is no longer a precondition.
 type zapServer struct {
 	listener net.Listener
+	mu       sync.RWMutex
 	handlers map[string]RawHandler
 	server   *ZAPServer
 	codec    Codec
@@ -155,26 +169,30 @@ func (s *zapServer) Register(name string, handler interface{}) error {
 }
 
 func (s *zapServer) RegisterRaw(method string, handler RawHandler) error {
+	s.mu.Lock()
 	s.handlers[method] = handler
+	s.mu.Unlock()
 	return nil
 }
 
+// dispatch routes a request to its registered handler. handlers is read under
+// the RLock, so dispatch is safe concurrent with RegisterRaw.
+func (s *zapServer) dispatch(ctx context.Context, method string, payload []byte) ([]byte, error) {
+	s.mu.RLock()
+	handler, ok := s.handlers[method]
+	s.mu.RUnlock()
+	if !ok {
+		return nil, fmt.Errorf("unknown method: %s", method)
+	}
+	return handler(ctx, payload)
+}
+
 func (s *zapServer) Serve(ctx context.Context) error {
-	s.server = NewZAPServer(s.listener, ZAPHandlerFunc(func(ctx context.Context, method string, payload []byte) ([]byte, error) {
-		handler, ok := s.handlers[method]
-		if !ok {
-			return nil, fmt.Errorf("unknown method: %s", method)
-		}
-		return handler(ctx, payload)
-	}))
 	return s.server.Serve(ctx)
 }
 
 func (s *zapServer) Close() error {
-	if s.server != nil {
-		return s.server.Close()
-	}
-	return s.listener.Close()
+	return s.server.Close()
 }
 
 func (s *zapServer) Addr() string {
