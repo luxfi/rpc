@@ -302,7 +302,7 @@ func (s *ZAPServer) sendResponse(conn net.Conn, requestID uint32, data []byte, e
 // Close closes the server
 func (s *ZAPServer) Close() error {
 	s.closed.Store(true)
-	s.conns.Range(func(key, _ interface{}) bool {
+	s.conns.Range(func(key, _ any) bool {
 		key.(net.Conn).Close()
 		return true
 	})

@@ -89,7 +89,7 @@ type zapClient struct {
 	codec Codec
 }
 
-func (c *zapClient) Call(ctx context.Context, method string, args, reply interface{}) error {
+func (c *zapClient) Call(ctx context.Context, method string, args, reply any) error {
 	var payload []byte
 	var err error
 
@@ -126,7 +126,7 @@ func (c *zapClient) CallRaw(ctx context.Context, method string, payload []byte) 
 	return c.conn.Call(ctx, method, payload)
 }
 
-func (c *zapClient) Notify(ctx context.Context, method string, args interface{}) error {
+func (c *zapClient) Notify(ctx context.Context, method string, args any) error {
 	var payload []byte
 	var err error
 
@@ -163,7 +163,7 @@ type zapServer struct {
 	codec    Codec
 }
 
-func (s *zapServer) Register(name string, handler interface{}) error {
+func (s *zapServer) Register(name string, handler any) error {
 	// TODO: Use reflection to register method handlers
 	return fmt.Errorf("Register not yet implemented - use RegisterRaw")
 }

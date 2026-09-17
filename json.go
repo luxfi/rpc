@@ -79,8 +79,8 @@ func SendJSONRequest(
 	ctx context.Context,
 	uri *url.URL,
 	method string,
-	params interface{},
-	reply interface{},
+	params any,
+	reply any,
 	options ...Option,
 ) error {
 	log.Printf("[RPC-DEBUG] SendJSONRequest called: method=%s uri=%s", method, uri.String())
@@ -93,7 +93,7 @@ func SendJSONRequest(
 	uri.RawQuery = ops.queryParams.Encode()
 
 	var lastErr error
-	for attempt := 0; attempt < maxRetries; attempt++ {
+	for attempt := range maxRetries {
 		if attempt > 0 {
 			// Exponential backoff: 100ms, 200ms, 400ms
 			waitTime := retryBaseWait * time.Duration(1<<(attempt-1))

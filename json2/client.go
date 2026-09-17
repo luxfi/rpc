@@ -27,7 +27,7 @@ type clientRequest struct {
 	Method string `json:"method"`
 
 	// Object to pass as request parameter to the method.
-	Params interface{} `json:"params"`
+	Params any `json:"params"`
 
 	// The request id. This can be of any type. It is used to match the
 	// response with the request that it is replying to.
@@ -42,7 +42,7 @@ type clientResponse struct {
 }
 
 // EncodeClientRequest encodes parameters for a JSON-RPC client request.
-func EncodeClientRequest(method string, args interface{}) ([]byte, error) {
+func EncodeClientRequest(method string, args any) ([]byte, error) {
 	val, err := rand.Int(rand.Reader, big.NewInt(int64(math.MaxInt64)))
 	if err != nil {
 		log.Fatal(err)
@@ -59,7 +59,7 @@ func EncodeClientRequest(method string, args interface{}) ([]byte, error) {
 
 // DecodeClientResponse decodes the response body of a client request into
 // the interface reply.
-func DecodeClientResponse(r io.Reader, reply interface{}) error {
+func DecodeClientResponse(r io.Reader, reply any) error {
 	var c clientResponse
 	if err := json.NewDecoder(r).Decode(&c); err != nil {
 		return err

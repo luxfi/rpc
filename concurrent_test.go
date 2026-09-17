@@ -42,8 +42,7 @@ func TestZAPRegisterRawDuringServe(t *testing.T) {
 		readers    = 20 // concurrent reader goroutines sharing one client
 	)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	server, err := Listen("127.0.0.1:0")
 	if err != nil {
@@ -95,8 +94,7 @@ func TestZAPRegisterRawDuringServe(t *testing.T) {
 	// of the race (s.mu.Lock). Re-registration is idempotent (same handler
 	// value) and keeps writers contending on the map for the whole window.
 	registrars.Add(methods)
-	for i := 0; i < methods; i++ {
-		i := i
+	for i := range methods {
 		go func() {
 			defer registrars.Done()
 			method := methodName(i)
@@ -104,7 +102,7 @@ func TestZAPRegisterRawDuringServe(t *testing.T) {
 				return []byte(want(method, p)), nil
 			}
 			<-start
-			for r := 0; r < reRegister; r++ {
+			for range reRegister {
 				if err := server.RegisterRaw(method, handler); err != nil {
 					t.Errorf("RegisterRaw(%s): %v", method, err)
 					return
@@ -118,8 +116,7 @@ func TestZAPRegisterRawDuringServe(t *testing.T) {
 	// s.mu.RLock). A method not yet registered legitimately returns "unknown
 	// method"; any successful response must be exactly correct.
 	readerWG.Add(readers)
-	for c := 0; c < readers; c++ {
-		c := c
+	for c := range readers {
 		go func() {
 			defer readerWG.Done()
 			<-start
@@ -156,7 +153,7 @@ func TestZAPRegisterRawDuringServe(t *testing.T) {
 	// established the happens-before), each method must dispatch correctly on the
 	// still-running server. This is the hard proof that dynamically registered
 	// methods become callable and route to their own handler.
-	for i := 0; i < methods; i++ {
+	for i := range methods {
 		method := methodName(i)
 		resp, err := client.CallRaw(ctx, method, payload)
 		if err != nil {
@@ -178,7 +175,7 @@ func TestZAPRegisterRawDuringServe(t *testing.T) {
 // the accept loop (Serve returns nil) and never leak a spinning goroutine — a
 // Close that wins the startup race must still set closed. Run with -race.
 func TestZAPServeCloseConcurrent(t *testing.T) {
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		server, err := Listen("127.0.0.1:0")
 		if err != nil {
 			t.Fatalf("Listen: %v", err)

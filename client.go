@@ -20,13 +20,13 @@ import (
 // All application code should use this interface.
 type Client interface {
 	// Call makes a synchronous RPC call
-	Call(ctx context.Context, method string, args, reply interface{}) error
+	Call(ctx context.Context, method string, args, reply any) error
 
 	// CallRaw makes a call with raw bytes (for zero-copy scenarios)
 	CallRaw(ctx context.Context, method string, payload []byte) ([]byte, error)
 
 	// Notify sends a one-way message (no response expected)
-	Notify(ctx context.Context, method string, args interface{}) error
+	Notify(ctx context.Context, method string, args any) error
 
 	// Close closes the connection
 	Close() error
@@ -35,7 +35,7 @@ type Client interface {
 // Server is the protocol-agnostic RPC server interface.
 type Server interface {
 	// Register registers a service handler
-	Register(name string, handler interface{}) error
+	Register(name string, handler any) error
 
 	// RegisterRaw registers a raw byte handler
 	RegisterRaw(method string, handler RawHandler) error
@@ -55,8 +55,8 @@ type RawHandler func(ctx context.Context, payload []byte) ([]byte, error)
 
 // Codec encodes/decodes RPC messages
 type Codec interface {
-	Encode(v interface{}) ([]byte, error)
-	Decode(data []byte, v interface{}) error
+	Encode(v any) ([]byte, error)
+	Decode(data []byte, v any) error
 }
 
 // Transport represents the underlying transport mechanism
